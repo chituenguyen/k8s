@@ -1,9 +1,9 @@
 Step1: changing access permissions
-  Run: chmod +x ./setup.sh
+  Run: chmod +x ./setup.sh \\
        chmod +x ./forward.sh
 
-Step2: Run sh file
-  Run: ./setup.sh
+Step2: Run sh file \\
+  Run: ./setup.sh \\  
        ./forward.sh
 
 NOTE:
