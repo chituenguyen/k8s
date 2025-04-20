@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: r2s-api
+  labels:
+    app: r2s-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: r2s-api
+  template:
+    metadata:
+      labels:
+        app: r2s-api
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node-role
+                operator: In
+                values:
+                - backend
+      containers:
+      - name: r2s-api
+        image: tue553/r2s-api:latest
+        ports:
+        - containerPort: 3000
+        envFrom:
+        - secretRef:
+            name: api-env
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: r2s-api-service
+spec:
+  selector:
+    app: r2s-api
+  ports:
+  - port: 80
+    targetPort: 3000
+  type: NodePort

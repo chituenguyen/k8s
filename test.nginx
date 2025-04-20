@@ -1,0 +1,178 @@
+proxy_cache_path /var/www/html/logo/logo_cache/ levels=1:2 keys_zone=logo_cache:10m inactive=7d max_size=2g;
+map $2 $sport_type {
+    default $2;
+    "team" "competitor";
+    "manager" "coach";
+    "referee" "referee";
+    "stadium" "stadium";
+}
+server {
+    server_name img.uniscore.com www.img.uniscore.com logo.fastproxyapi.com;
+
+    access_log /var/log/nginx/dev-img.uniscore.com.access.log ;
+    error_log /var/log/nginx/dev-img.uniscore.com.error.log;
+
+    more_set_headers 'Cache-Control max-age=86400, public, s-maxage=604800';
+    etag on;
+
+    location = / {
+        return 200;
+    }
+
+    location ~* ^/football/match/(.*)/image$ {
+        etag on;
+        gzip_static on;
+        brotli_static on;
+        alias /var/www/html/logo/football/match;
+        try_files /$1.png @thumbnail_proxy;
+    }
+
+    location @thumbnail_proxy {
+        proxy_pass http://156.146.45.177:3031;
+        rewrite ^/football/match/(.*)/image$ /api/match/render-image/$1 break;
+        proxy_redirect off;
+        include proxy_params;
+    }
+
+    location ~* ^/(.*)/notification/(.*)/image$ {
+        etag on;
+        gzip_static on;
+        brotli_static on;
+        alias /var/www/html/logo/$1/notification;
+        try_files /$2.png @proxy;
+    }
+
+    location ~* ^/(.*)/(.*)/(.*)/image$ {
+        # more_set_headers 'Path: $1/$sport_type/$3';
+        etag on;
+        #gzip_static on;
+        #brotli_static on;
+        root /var/www/html/logo/$1;
+        try_files /$sport_type/$3.png /$sport_type-default.png;
+    }
+    location ~* ^/(.*)/(.*)/(.*)/image/small$ {
+        set $image_name "$3.png";
+        set $proxy_uri "https://uniscore.com/cdn-cgi/image/width=60,format=webp/https://img.uniscore.com/$1/$sport_type/$3/image";
+
+        # Áp dụng cache cho location này
+        proxy_cache logo_cache;
+        proxy_cache_valid 200 7d;
+        proxy_cache_use_stale error timeout updating invalid_header http_500 http_502 http_503 http_504;
+
+        proxy_pass $proxy_uri;
+        proxy_ssl_server_name on;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header Host $host;
+
+        # Bỏ qua các header cache từ upstream server
+        proxy_ignore_headers X-Accel-Expires Expires Cache-Control;
+        proxy_intercept_errors on;
+
+        # Bộ lọc để phát hiện chuỗi lỗi cụ thể
+        error_page 415 = "https://img.uniscore.com/$1/$sport_type/$3/image";
+        # Các thiết lập khác để hỗ trợ gzip và caching
+        etag on;
+        gzip_static on;
+        brotli_static on;
+        expires max;
+    }
+
+    location ~* ^/(.*)/(.*)/(.*)/image/medium$ {
+        set $image_name "$3.png";
+        set $proxy_uri "https://uniscore.com/cdn-cgi/image/width=80,quality=85,format=webp/https://img.uniscore.com/$1/$sport_type/$3/image";
+
+        # Áp dụng cache cho location này
+        proxy_cache logo_cache;
+        proxy_cache_valid 200 7d;
+        proxy_cache_use_stale error timeout updating invalid_header http_500 http_502 http_503 http_504;
+
+        proxy_pass $proxy_uri;
+        proxy_ssl_server_name on;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header Host $host;
+
+        # Bỏ qua các header cache từ upstream server
+        proxy_ignore_headers X-Accel-Expires Expires Cache-Control;
+        proxy_intercept_errors on;
+
+        # Bộ lọc để phát hiện chuỗi lỗi cụ thể
+        error_page 415 = "https://img.uniscore.com/$1/$sport_type/$3/image";
+        # Các thiết lập khác để hỗ trợ gzip và caching
+        etag on;
+        gzip_static on;
+        brotli_static on;
+        expires max;
+    }
+    location = /player-default.png {
+        add_header X-Image-Exists 0;
+        root /var/www/html/logo/player;
+    }
+    location = /competition-default.png {
+        add_header X-Image-Exists 0;
+        root /var/www/html/logo/competition;
+    }
+    location = /competitor-default.png {
+        add_header X-Image-Exists 0;
+        root /var/www/html/logo/competitor;
+    }
+    location = /country-default.png {
+        add_header X-Image-Exists 0;
+        root /var/www/html/logo/country;
+    }
+    location = /referee-default.png {
+        add_header X-Image-Exists 0;
+        root /var/www/html/logo/referee;
+    }
+    location = /stadium-default.png {
+        add_header X-Image-Exists 0;
+        root /var/www/html/logo/stadium;
+    }
+
+
+    location @proxy {
+        proxy_pass http://127.0.0.1:3000;
+        rewrite ^/football/country/(.*)/image$ /api/v1/country/$1/logo break;
+        rewrite ^/football/competition/(.*)/image$ /api/v1/competition/$1/logo break;
+        rewrite ^/football/competitor/(.*)/image$ /api/v1/competitor/$1/logo break;
+        rewrite ^/football/team/(.*)/image$ /api/v1/competitor/$1/logo break;
+        rewrite ^/football/player/(.*)/image$ /api/v1/player/$1/logo break;
+        proxy_redirect off;
+        include proxy_params;
+    }
+    location ~* ^/(.*)/(.*)/(.*)/image.(.*)$ {
+        set $image_name "$3.png";
+        set $proxy_uri "https://uniscore.com/cdn-cgi/image/width=100,height=100,quality=85,format=$4,fit=pad,background=white/https://img.uniscore.com/$1/$sport_type/$3/image";
+
+        # Áp dụng cache cho location này
+        proxy_cache logo_cache;
+        proxy_cache_valid 200 7d;
+        proxy_cache_use_stale error timeout updating invalid_header http_500 http_502 http_503 http_504;
+
+        proxy_pass $proxy_uri;
+        proxy_ssl_server_name on;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header Host $host;
+
+        # Bỏ qua các header cache từ upstream server
+        proxy_ignore_headers X-Accel-Expires Expires Cache-Control;
+        proxy_intercept_errors on;
+
+        # Bộ lọc để phát hiện chuỗi lỗi cụ thể
+        error_page 415 = "https://img.uniscore.com/$1/$sport_type/$3/image";
+        # Các thiết lập khác để hỗ trợ gzip và cachingetag on;
+        gzip_static on;
+        brotli_static on;
+        expires max;
+    }
+    location ~ /purge(/.*) {
+        add_header Cache-Control 'no-cache, no-store, must-revalidate';
+        proxy_cache_purge logo_cache $scheme$request_method$host$1;
+    }
+}
+
+
+curl -X POST "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/purge_cache" \
+     -H "X-Auth-Email: ${CLOUDFLARE_EMAIL}" \
+     -H "X-Auth-Key: ${CLOUDFLARE_API_KEY}" \
+     -H "Content-Type: application/json" \
+     --data '{"files":["https://img.uniscore.com/football/team/e4wyrn4h111q86p/image/medium"]}'
