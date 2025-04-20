@@ -1,10 +1,25 @@
-Step1: changing access permissions
-  Run: chmod +x ./setup.sh \\
-       chmod +x ./forward.sh
+# Kubernetes Local Development Setup
 
-Step2: Run sh file \\
-  Run: ./setup.sh \\  
-       ./forward.sh
+## Prerequisites
+- Docker
+- Kind (Kubernetes in Docker)
+- kubectl
+
+## Setup Instructions
+
+### Step 1: Set Execute Permissions
+```bash
+chmod +x ./setup.sh
+chmod +x ./forward.sh
+```
+
+### Step 2: Run Setup Scripts
+```bash
+./setup.sh
+./forward.sh
+```
+
+## Useful Commands
 
 NOTE:
   - kind create cluster --config kind-config.yaml --name k8s => start cluster
